@@ -12,11 +12,23 @@
 
 #include "GeneratorModules/GenFilter.h"
 #include "TruthUtils/FastJet.h"
+#include "TruthUtils/PIDUtils.h"
 
+/// simple class to decorate a fastjet::PseudoJet
+/// with charge and pdg_id info
 class IdentifiedPseudoJet : public fastjet::PseudoJet {
 
  public:
-  IdentifiedPseudoJet(const HepMC::GenParticle * p); 
+  IdentifiedPseudoJet(const HepMC::GenParticle * p)
+    : fastjet::PseudoJet(p->momentum().px(), 
+			 p->momentum().py(), 
+			 p->momentum().pz(), 
+			 p->momentum().e())
+    {
+      m_pdgid = p->pdg_id();
+      m_charge = MC::PID::charge(m_pdgid);
+    }
+
   virtual ~IdentifiedPseudoJet() { }
 
   int pdg_id() const {return m_pdgid;}
@@ -58,7 +70,9 @@ private:
   double m_fastjet_pt_min;
   double m_fastjet_eta_max;
   double m_true_track_pt;
+  int m_min_trk_core;
   int m_max_trk_core;
+  int m_min_trk_iso;
   int m_max_trk_iso;
   double m_core_dr;
   double m_iso_dr;

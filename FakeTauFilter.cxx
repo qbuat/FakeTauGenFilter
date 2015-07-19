@@ -2,23 +2,22 @@
 
 #include "GeneratorFilters/FakeTauFilter.h"
 #include "TruthUtils/PIDCodes.h"
-#include "TruthUtils/PIDUtils.h"
 #include "TruthUtils/HepMCHelpers.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
 
- #include <cmath>
+#include <cmath>
 
- ////////////
-IdentifiedPseudoJet::IdentifiedPseudoJet(const HepMC::GenParticle * p) 
-  : fastjet::PseudoJet(p->momentum().px(), 
-		       p->momentum().py(), 
-		       p->momentum().pz(), 
-		       p->momentum().e())
-{
-  m_pdgid = p->pdg_id();
-  m_charge = MC::PID::charge(m_pdgid);
-}
+//  ////////////
+// IdentifiedPseudoJet::IdentifiedPseudoJet(const HepMC::GenParticle * p) 
+//   : fastjet::PseudoJet(p->momentum().px(), 
+// 		       p->momentum().py(), 
+// 		       p->momentum().pz(), 
+// 		       p->momentum().e())
+// {
+//   m_pdgid = p->pdg_id();
+//   m_charge = MC::PID::charge(m_pdgid);
+// }
 
 FakeTauFilter::FakeTauFilter(const std::string& name, ISvcLocator* pSvcLocator)
   : GenFilter(name,pSvcLocator) 
@@ -27,7 +26,9 @@ FakeTauFilter::FakeTauFilter(const std::string& name, ISvcLocator* pSvcLocator)
   declareProperty("FastJetPtmin", m_fastjet_pt_min=20000.);
   declareProperty("FastJetEtamax", m_fastjet_eta_max=2.8);
   declareProperty("TrueTrackPt", m_true_track_pt=5000.);
+  declareProperty("MinTracksCore", m_min_trk_core=1);
   declareProperty("MaxTracksCore", m_max_trk_core=4);
+  declareProperty("MinTracksIso", m_min_trk_iso=0);
   declareProperty("MaxTracksIso", m_max_trk_iso=2);
   declareProperty("CoreDr", m_core_dr=0.2);
   declareProperty("IsoDr", m_iso_dr=0.4);
@@ -111,7 +112,8 @@ StatusCode FakeTauFilter::filterEvent() {
     }
 
     // check that the jet passes the track counting requirements
-    if (n_tracks_core > 0 and n_tracks_core < m_max_trk_core and n_tracks_iso < m_max_trk_iso) 
+    if (n_tracks_core >= m_min_trk_core and n_tracks_core <= m_max_trk_core)
+      if (n_tracks_iso >= m_min_trk_iso and n_tracks_iso <= m_max_trk_iso) 
       n_good_jets += 1;
   }
 
