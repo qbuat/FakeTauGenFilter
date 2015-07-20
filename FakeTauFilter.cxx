@@ -5,6 +5,8 @@
 #include "TruthUtils/HepMCHelpers.h"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
+#include "TVector3.h"
+#include "TLorentzVector.h"
 
 #include <cmath>
 
@@ -23,9 +25,10 @@ FakeTauFilter::FakeTauFilter(const std::string& name, ISvcLocator* pSvcLocator)
   : GenFilter(name,pSvcLocator) 
 {
   declareProperty("FastJetConeSize", m_fastjet_cone_size=0.4);
-  declareProperty("FastJetPtmin", m_fastjet_pt_min=20000.);
+  declareProperty("FastJetPtmin", m_fastjet_pt_min=25000.);
   declareProperty("FastJetEtamax", m_fastjet_eta_max=2.8);
-  declareProperty("TrueTrackPt", m_true_track_pt=5000.);
+  declareProperty("TrueTrackPt", m_true_track_pt=1000.);
+  declareProperty("MinPtCore", m_pt_core_min=25000.);
   declareProperty("MinTracksCore", m_min_trk_core=1);
   declareProperty("MaxTracksCore", m_max_trk_core=4);
   declareProperty("MinTracksIso", m_min_trk_iso=0);
@@ -84,15 +87,27 @@ StatusCode FakeTauFilter::filterEvent() {
 		 << " out of "<< jets.size()
 		 << " with pT = "<< jet.pt()
 		 << " eta = " << jet.eta()
+		 << " pseudorap = " << jet.pseudorapidity()
 		 << " phi = " << jet.phi());
 
     int n_tracks_core = 0;
     int n_tracks_iso = 0;
+    TLorentzVector jet_core;
+    jet_core.SetPxPyPzE(0., 0., 0., 0.);
     // loop over all selected input particles
     for (unsigned int ip=0; ip < identified_pseudo_jets.size(); ip++) {
       auto part = identified_pseudo_jets[ip];
       // check that the true particle is in the considered jet.
       if (indices[ip] == (int)ijet) {
+	// compute the core pT
+	if (is_core_track(part, jet)) {
+	  TLorentzVector jet_temp;
+	  jet_temp.SetPtEtaPhiM(part.pt(), 
+				part.pseudorapidity(),
+				part.phi(),
+				part.m());
+	  jet_core += jet_temp;
+	}
 	// check that the selected particle 
 	// makes a good track candidate 
 	if (is_good_track(part)) {
@@ -110,6 +125,15 @@ StatusCode FakeTauFilter::filterEvent() {
 	}
       }
     }
+
+    ATH_MSG_INFO("\t\t\t jet "<< ijet 
+		 << " out of "<< jets.size()
+		 << " with pT = "<< jet.pt()
+		 << " and core pt "<<jet_core.Pt());
+
+    if (jet_core.Pt() < m_pt_core_min)
+      continue;
+
 
     // check that the jet passes the track counting requirements
     if (n_tracks_core >= m_min_trk_core and n_tracks_core <= m_max_trk_core)
@@ -133,7 +157,7 @@ bool FakeTauFilter::is_good_jet(const fastjet::PseudoJet & jet)
     return false;
 
   // eta cut
-  if (fabs(jet.eta()) > m_fastjet_eta_max)
+  if (fabs(jet.pseudorapidity()) > m_fastjet_eta_max)
     return false;
 
   return true;
@@ -156,7 +180,12 @@ bool FakeTauFilter::is_good_track(const IdentifiedPseudoJet & track)
 
 bool FakeTauFilter::is_core_track(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet)
 {
-  if (jet.delta_R(track) < m_core_dr) 
+  TVector3 jet_vec;
+  TVector3 track_vec;
+  jet_vec.SetPtEtaPhi(jet.pt(), jet.pseudorapidity(), jet.phi());
+  track_vec.SetPtEtaPhi(track.pt(), track.pseudorapidity(), track.phi());
+  ATH_MSG_INFO("\t\t\t Delta R = " << jet_vec.DeltaR(track_vec));
+  if (jet_vec.DeltaR(track_vec) < m_core_dr) 
     return true;
   else
     return false;
@@ -165,7 +194,11 @@ bool FakeTauFilter::is_core_track(const fastjet::PseudoJet & track, const fastje
 
 bool FakeTauFilter::is_iso_track(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet)
 {
-  if (jet.delta_R(track) < m_iso_dr and not is_core_track(track, jet))
+  TVector3 jet_vec;
+  TVector3 track_vec;
+  jet_vec.SetPtEtaPhi(jet.pt(), jet.pseudorapidity(), jet.phi());
+  track_vec.SetPtEtaPhi(track.pt(), track.pseudorapidity(), track.phi());
+  if (jet_vec.DeltaR(track_vec) < m_iso_dr and not is_core_track(track, jet))
     return true;
   else
     return false;

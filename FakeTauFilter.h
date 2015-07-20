@@ -69,6 +69,7 @@ private:
   double m_fastjet_cone_size;
   double m_fastjet_pt_min;
   double m_fastjet_eta_max;
+  double m_pt_core_min;
   double m_true_track_pt;
   int m_min_trk_core;
   int m_max_trk_core;
