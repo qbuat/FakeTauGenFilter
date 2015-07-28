@@ -13,7 +13,7 @@
 #include "GeneratorModules/GenFilter.h"
 #include "TruthUtils/FastJet.h"
 #include "TruthUtils/PIDUtils.h"
-
+#include "TLorentzVector.h"
 /// simple class to decorate a fastjet::PseudoJet
 /// with charge and pdg_id info
 class IdentifiedPseudoJet : public fastjet::PseudoJet {
@@ -38,6 +38,27 @@ class IdentifiedPseudoJet : public fastjet::PseudoJet {
   int m_pdgid;
   int m_charge;
 };
+
+// class to hold simple EDM of the built tau 
+class TruthFakeTau : public fastjet::PseudoJet 
+{
+ public:
+  TruthFakeTau(const TLorentzVector & vec)
+    : fastjet::PseudoJet(vec.Px(), vec.Py(), vec.Pz(), vec.E())
+    {}
+
+  int nTracks() const {return m_nTracks;}
+  int nWideTracks() const {return m_nWideTracks;}
+  
+  void set_ntracks(const int & n) {m_nTracks=n;}
+  void set_nwidetracks(const int & n) {m_nWideTracks=n;}
+
+ private:
+  int m_nTracks;
+  int m_nWideTracks;
+};
+
+typedef std::vector<TruthFakeTau> TruthFakeTaus;
 
 /// Filter events based on presence of charged leptons
 class FakeTauFilter : public GenFilter {
@@ -77,12 +98,19 @@ private:
   int m_max_trk_iso;
   double m_core_dr;
   double m_iso_dr;
-  int m_n_truthfakes;
+
+  bool m_use_dr;
+  double m_dr_taus;
+
+  unsigned int m_n_truthfakes;
+  TruthFakeTaus m_TruthFakeTaus;
+
+  bool pass_deltaR(const TruthFakeTaus & taus, const double & drcut);
 
   bool is_good_jet(const fastjet::PseudoJet & jet);
   bool is_good_track(const IdentifiedPseudoJet & track);
-  bool is_core_track(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet);
-  bool is_iso_track(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet);
+  bool is_core(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet);
+  bool is_iso(const fastjet::PseudoJet & track, const fastjet::PseudoJet & jet);
 
 };
 
